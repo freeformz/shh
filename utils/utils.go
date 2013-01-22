@@ -2,7 +2,9 @@ package utils
 
 import (
 	"os"
+  "log"
 	"strconv"
+  "time"
 )
 
 func Ui64toa(val uint64) string {
@@ -34,5 +36,24 @@ func GetEnvWithDefaultInt(env string, def int) int {
     return def
 	}
 
-  return tmp
+  i, err := strconv.Atoi(tmp)
+  if err != nil { log.Fatal(err) }
+  return i
+}
+
+func GetEnvWithDefaultDuration(env string, def string) time.Duration {
+  tmp := os.Getenv(env)
+
+  if tmp == "" {
+    tmp = def
+	}
+
+  d, err := time.ParseDuration(tmp)
+
+  if err != nil {
+    log.Printf("$%s is not a valid duration\n", env)
+    log.Fatal(err)
+  }
+
+  return d
 }

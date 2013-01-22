@@ -1,6 +1,8 @@
 package outputters
 
 import (
+  "github.com/freeformz/shh/utils"
+  "github.com/freeformz/shh/mm"
   "io/ioutil"
   "encoding/json"
   "net/http"
@@ -31,32 +33,45 @@ const (
 var (
   user string = os.Getenv("SHH_LIBRATO_USER")
   token string = os.Getenv("SHH_LIBRATO_TOKEN")
-  batchLength string = os.Getenv("SHH_LIBRATO_BATCH")
+  batchLength int = utils.GetEnvWithDefaultInt("SHH_LIBRATO_BATCH_SIZE",50)
+  batchTimeout time.Duration = utils.GetEnvWithDefaultDuration("SHH_LIBRATO_BATCH_TIMEOUT", "1s")
+  batches chan[]*mm.Measurement = make(chan[]*mm.Measurement, 4)
 )
 
-func init {
+type Librato struct {}
+
+func init() {
+  go deliver()
 }
 
-type Librato {}
+func deliver() {
+  for batch := range batches {
+    fmt.Println(batch)
+  }
+}
 
 func (out Librato) Output (measurements <-chan *mm.Measurement) {
-  ticker := time.Tick(time.Duration(batchTimeout) * time.Millisecond)
-  batch := makeBatch() //make([]LogMessage, 0, batchSize)
+  ticker := time.Tick(batchTimeout)
+  batch := makeBatch()
   for {
     select {
     case <-ticker:
       if len(batch) > 0 {
         batches <- batch
-        batch = makeBatch() //make([]LogMessage, 0, batchSize)
+        batch = makeBatch()
       }
-    case line := <-lines:
-      batch = append(batch, parseLogMessage(line))
+    case measurement := <-measurements:
+      batch = append(batch, measurement)
       if len(batch) == cap(batch) {
         batches <- batch
-        batch = makeBatch() //make([]LogMessage, 0, batchSize)
+        batch = makeBatch()
       }
     }
   }
+}
+
+func makeBatch() []*mm.Measurement {
+  return make([]*mm.Measurement, 0, batchLength)
 }
 
 func foo() {

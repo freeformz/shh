@@ -56,7 +56,8 @@ func main() {
 	mp.RegisterPoller(pollers.Disk{})
 
 	measurements := make(chan *mm.Measurement, 100)
-	go outputters.L2MetStdOut{}.Output(measurements)
+	//go outputters.L2MetStdOut{}.Output(measurements)
+	go outputters.Librato{}.Output(measurements)
 
 	// do a tick at start
 	go mp.Poll(measurements)
