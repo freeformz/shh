@@ -16,13 +16,30 @@ type ListenStats struct {
 	connectionCount float64
 }
 
-func (ls 
+func (ls *ListenStats) IncrementConnectionCount() {
+    ls.Lock()
+    fmt.Println(ls.connectionCount)
+    ls.connectionCount++
+    ls.Unlock()
+}
 
+func (ls *ListenStats) DecrementConnectionCount() {
+    ls.Lock()
+    fmt.Println(ls.connectionCount)
+    ls.connectionCount--
+    ls.Unlock()
+}
 
+func (ls *ListenStats) ConnectionCount() float64 {
+	defer ls.RUnlock()
+	ls.RLock()
+	return ls.connectionCount
+}
 
 type Listen struct {
 	measurements    chan<- *mm.Measurement
 	listener        net.Listener
+	stats           *ListenStats
 }
 
 var (
@@ -57,7 +74,7 @@ func NewListenPoller(measurements chan<- *mm.Measurement) Listen {
 		log.Fatal(err)
 	}
 
-  poller := Listen{measurements: measurements, listener: listener, connectionCount: 0}
+	poller := Listen{measurements: measurements, listener: listener, stats: &ListenStats{}}
 
 	go func(poller *Listen) {
 		for {
@@ -74,26 +91,17 @@ func NewListenPoller(measurements chan<- *mm.Measurement) Listen {
 	return poller
 }
 
-func (poller *Listen) Poll(tick time.Time) {
-	poller.RLock()
-	poller.measurements <- &mm.Measurement{tick, poller.Name(), []string{"connection", "count"}, poller.connectionCount}
-	poller.RUnlock()
+func (poller Listen) Poll(tick time.Time) {
+	poller.measurements <- &mm.Measurement{tick, poller.Name(), []string{"connection", "count"}, poller.stats.ConnectionCount()}
 }
 
-func (poller *Listen) handleConnection(conn net.Conn) {
+func (poller Listen) handleConnection(conn net.Conn) {
 	defer func() {
     conn.Close()
-    poller.Lock()
-    fmt.Println(poller.connectionCount)
-    poller.connectionCount--
-    poller.Unlock()
+		poller.stats.DecrementConnectionCount()
   }()
 
-  poller.Lock()
-  fmt.Println(poller.connectionCount)
-  poller.connectionCount++
-  poller.Unlock()
-
+	poller.stats.IncrementConnectionCount()
 
 	time.Sleep(time.Second * 20)
 
