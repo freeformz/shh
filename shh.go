@@ -22,11 +22,11 @@ const (
 )
 
 var (
-	Interval    = utils.GetEnvWithDefaultDuration("SHH_INTERVAL", DEFAULT_INTERVAL) // Polling Interval
-	Outputter   = utils.GetEnvWithDefault("SHH_OUTPUTTER", DEFAULT_OUTPUTTER)       // Outputter
-	Start       = time.Now()                                                        // Start time
-	ProfilePort = utils.GetEnvWithDefault("SHH_PROFILE_PORT", "0")                  // Profile Port
-  SignalChannel = make(chan os.Signal, 1)
+	Interval      = utils.GetEnvWithDefaultDuration("SHH_INTERVAL", DEFAULT_INTERVAL) // Polling Interval
+	Outputter     = utils.GetEnvWithDefault("SHH_OUTPUTTER", DEFAULT_OUTPUTTER)       // Outputter
+	Start         = time.Now()                                                        // Start time
+	ProfilePort   = utils.GetEnvWithDefault("SHH_PROFILE_PORT", "0")                  // Profile Port
+	SignalChannel = make(chan os.Signal, 1)
 )
 
 func main() {
@@ -39,7 +39,7 @@ func main() {
 
 	go func() {
 		for sig := range SignalChannel {
-      mp.Exit()
+			mp.Exit()
 			log.Fatalf("signal=%s finished=%s duration=%s\n", sig, time.Now().Format(time.RFC3339Nano), time.Since(Start))
 		}
 	}()

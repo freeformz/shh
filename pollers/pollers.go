@@ -17,7 +17,7 @@ var (
 
 type Poller interface {
 	Name() string
-  Exit()
+	Exit()
 	Poll(tick time.Time)
 }
 
@@ -96,7 +96,7 @@ func (mp Multi) Name() string {
 }
 
 func (mp Multi) Exit() {
-  for _, poller := range mp.pollers {
-    poller.Exit()
-  }
+	for _, poller := range mp.pollers {
+		poller.Exit()
+	}
 }

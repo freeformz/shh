@@ -94,4 +94,3 @@ func ProcessState(pid int) string {
 
 	return fields[2]
 }
-

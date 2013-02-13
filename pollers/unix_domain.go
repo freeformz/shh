@@ -4,11 +4,10 @@ import (
 	"github.com/freeformz/shh/mm"
 	"github.com/freeformz/shh/utils"
 	"log"
-  "fmt"
 	"net"
+	"strings"
 	"sync"
 	"time"
-  "strings"
 )
 
 type ListenStats struct {
@@ -17,48 +16,46 @@ type ListenStats struct {
 }
 
 func (ls *ListenStats) IncrementConnectionCount() {
-    ls.Lock()
-    fmt.Println(ls.connectionCount)
-    ls.connectionCount++
-    ls.Unlock()
+	ls.Lock()
+	defer ls.Unlock()
+	ls.connectionCount++
 }
 
 func (ls *ListenStats) DecrementConnectionCount() {
-    ls.Lock()
-    fmt.Println(ls.connectionCount)
-    ls.connectionCount--
-    ls.Unlock()
+	ls.Lock()
+	defer ls.Unlock()
+	ls.connectionCount--
 }
 
 func (ls *ListenStats) ConnectionCount() float64 {
-	defer ls.RUnlock()
 	ls.RLock()
+	defer ls.RUnlock()
 	return ls.connectionCount
 }
 
 type Listen struct {
-	measurements    chan<- *mm.Measurement
-	listener        net.Listener
-	stats           *ListenStats
+	measurements chan<- *mm.Measurement
+	listener     net.Listener
+	stats        *ListenStats
 }
 
 var (
-	listen = utils.GetEnvWithDefault("SHH_LISTEN", "unix,/tmp/shh")
-  listenNet string
-  listenLaddr string
+	listen      = utils.GetEnvWithDefault("SHH_LISTEN", "unix,/tmp/shh")
+	listenNet   string
+	listenLaddr string
 )
 
 func init() {
-  tmp := strings.Split(listen,",")
+	tmp := strings.Split(listen, ",")
 
 	if len(tmp) != 2 {
 		log.Fatal("SHH_LISTEN is not in the format: 'unix,/tmp/shh'")
 	}
 
-  listenNet = tmp[0]
-  listenLaddr = tmp[1]
+	listenNet = tmp[0]
+	listenLaddr = tmp[1]
 
-	switch listenNet{
+	switch listenNet {
 	case "tcp", "tcp4", "tcp6", "unix", "unixpacket":
 		break
 	default:
@@ -84,7 +81,7 @@ func NewListenPoller(measurements chan<- *mm.Measurement) Listen {
 				continue
 			}
 
-			go poller.handleConnection(conn)
+			go handleListenConnection(poller, conn)
 		}
 	}(&poller)
 
@@ -95,13 +92,11 @@ func (poller Listen) Poll(tick time.Time) {
 	poller.measurements <- &mm.Measurement{tick, poller.Name(), []string{"connection", "count"}, poller.stats.ConnectionCount()}
 }
 
-func (poller Listen) handleConnection(conn net.Conn) {
-	defer func() {
-    conn.Close()
-		poller.stats.DecrementConnectionCount()
-  }()
+func handleListenConnection(poller *Listen, conn net.Conn) {
+	defer conn.Close()
 
 	poller.stats.IncrementConnectionCount()
+	defer poller.stats.DecrementConnectionCount()
 
 	time.Sleep(time.Second * 20)
 
