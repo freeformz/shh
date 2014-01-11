@@ -34,6 +34,8 @@ func (out *Carbon) Connect(host string) net.Conn {
 
 func (out *Carbon) Output() {
 
+	ctx := Slog{"fn": "Output", "outputter": "carbon"}
+
 	conn := out.Connect(out.Host)
 
 	metric := make([]string, 0, 10)
@@ -52,7 +54,10 @@ func (out *Carbon) Output() {
 		}
 		metric = append(metric, measurement.Poller)
 		metric = append(metric, measurement.What...)
-		fmt.Fprintf(conn, "%s %s %d\n", strings.Join(metric, "."), measurement.SValue(), measurement.Unix())
+		_, err := conn.Write([]byte(fmt.Sprintf("%s %s %d\n", strings.Join(metric, "."), measurement.SValue(), measurement.Unix())))
+		if err != nil {
+			ctx.FatalError(err, "Writing to carbon host")
+		}
 		metric = metric[0:resetEnd]
 	}
 }
